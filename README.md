@@ -6,7 +6,7 @@ Installation
 
 Install the bundle:
 
-    composer require skuola/sitemap-bundle "dev-master"
+    composer require skuola/sitemap-bundle
 
 Register the bundle in `app/AppKernel.php`:
 
