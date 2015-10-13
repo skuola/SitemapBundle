@@ -1,0 +1,6 @@
+services:
+    skuola.command.sitemap_generator:
+        class: Skuola\SitemapBundle\Command\SitemapGeneratorCommand
+        arguments: ['@router', '@doctrine.orm.entity_manager', '%skuola_sitemap%']
+        tags:
+            -  { name: console.command }
