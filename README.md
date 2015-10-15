@@ -2,7 +2,7 @@
 [![SensioLabsInsight](https://insight.sensiolabs.com/projects/e8e5c5e8-8536-4632-8528-796d99ed54fd/mini.png)](https://insight.sensiolabs.com/projects/e8e5c5e8-8536-4632-8528-796d99ed54fd)
 [![Build Status](https://travis-ci.org/skuola/SitemapBundle.svg?branch=master)](https://travis-ci.org/skuola/SitemapBundle)
 
-Installation
+##Installation
 ------------
 
 Install the bundle:
@@ -21,4 +21,24 @@ public function registerBundles()
         new Skuola\SitemapBundle\SkuolaSitemapBundle()
     );
 }
+```
+
+##Configuration
+
+``` yml
+# app/config/config.yml
+skuola_sitemap:
+    routes:
+        legacy_route: ~
+        my_route_city:
+            route_params:
+                city: { entity: SkuolaDemoBundle:City, prop: slug }
+            changefreq: weekly
+            priority: 0.8
+        my_route_user_subject:
+            route_params:
+                user: { entity: SkuolaDemoBundle:User, prop: username }
+                subject: { entity: SkuolaDemoBundle:Subject, prop: slug }
+            changefreq: weekly
+            priority: 0.5
 ```
