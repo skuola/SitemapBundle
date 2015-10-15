@@ -83,12 +83,20 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf(Sitemap::class, $this->service->generateSitemapFromRoutes($routes, $sitemap));
     }
 
-    /** @dataProvider arraysProviders */
+    /**
+     * @dataProvider arraysProviders
+     * @param array $firstArray
+     * @param array $secondArray
+     * @param array $expected
+     */
     public function testGenerateCombinations($firstArray, $secondArray, $expected)
     {
         $this->assertEquals($expected, $this->service->generateCombinations([$firstArray, $secondArray]));
     }
 
+    /**
+     * @return array
+     */
     public function arraysProviders()
     {
         return [
