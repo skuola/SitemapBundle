@@ -49,7 +49,7 @@ class Configuration implements ConfigurationInterface
                         ->useAttributeAsKey('key')
                         ->prototype('array')
                             ->children()
-                                ->scalarNode('entity')->end()
+                                ->scalarNode('object')->end()
                                 ->scalarNode('prop')->end()
                             ->end()
                         ->end()

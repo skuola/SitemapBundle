@@ -34,13 +34,13 @@ skuola_sitemap:
         legacy_route: ~
         my_route_city:
             route_params:
-                city: { entity: SkuolaDemoBundle:City, prop: slug }
+                city: { object: SkuolaDemoBundle:City, prop: slug }
             changefreq: weekly
             priority: 0.8
         my_route_user_subject:
             route_params:
-                user: { entity: SkuolaDemoBundle:User, prop: username }
-                subject: { entity: SkuolaDemoBundle:Subject, prop: slug }
+                user: { object: SkuolaDemoBundle:User, prop: username }
+                subject: { object: SkuolaDemoBundle:Subject, prop: slug }
             changefreq: weekly
             priority: 0.5
 ```

@@ -113,7 +113,7 @@ class SitemapGeneratorCommand extends Command
         foreach ($routeParams as $param => $info) {
             $entities[] = array_map(function($entity) use ($info) {
                 return call_user_func([$entity, Container::camelize("get{$info['prop']}")]);
-            }, $this->objectManager->getRepository($info['entity'])->findAll());
+            }, $this->objectManager->getRepository($info['object'])->findAll());
         }
 
         return $entities;
