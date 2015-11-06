@@ -3,7 +3,6 @@
 [![Build Status](https://travis-ci.org/skuola/SitemapBundle.svg?branch=master)](https://travis-ci.org/skuola/SitemapBundle)
 
 ##Installation
-------------
 
 Install the bundle:
 
@@ -28,6 +27,8 @@ public function registerBundles()
 ``` yml
 # app/config/config.yml
 skuola_sitemap:
+    scheme: http
+    host: www.skuola.net
     routes:
         legacy_route: ~
         my_route_city:
