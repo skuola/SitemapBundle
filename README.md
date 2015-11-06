@@ -29,6 +29,7 @@ public function registerBundles()
 skuola_sitemap:
     scheme: http
     host: www.skuola.net
+    db_driver: orm
     routes:
         legacy_route: ~
         my_route_city:

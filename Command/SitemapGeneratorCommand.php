@@ -2,7 +2,6 @@
 
 namespace Skuola\SitemapBundle\Command;
 
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Routing\RouterInterface;
 use samdark\sitemap\Index;
 use samdark\sitemap\Sitemap;
@@ -11,16 +10,36 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\Container;
+use Doctrine\Common\Persistence\ObjectManager;
 
 class SitemapGeneratorCommand extends Command
 {
-    protected $router, $config;
+    /**
+     * @var RouterInterface
+     */
+    protected $router;
+    
+    /**
+     * @var ObjectManager
+     */
+    protected $objectManager;
+    
+    /**
+     * @var array
+     */
+    protected $config;
 
-    public function __construct(RouterInterface $router, EntityManagerInterface $em, array $config)
+    /**
+     * SitemapGeneratorCommand constructor.
+     * @param RouterInterface $router
+     * @param ObjectManager $objectManager
+     * @param array $config
+     */
+    public function __construct(RouterInterface $router, ObjectManager $objectManager, array $config)
     {
-        $this->em = $em;
-        $this->router = $router;
-        $this->config = $config;
+        $this->objectManager = $objectManager;
+        $this->router        = $router;
+        $this->config        = $config;
 
         parent::__construct();
     }
@@ -94,7 +113,7 @@ class SitemapGeneratorCommand extends Command
         foreach ($routeParams as $param => $info) {
             $entities[] = array_map(function($entity) use ($info) {
                 return call_user_func([$entity, Container::camelize("get{$info['prop']}")]);
-            }, $this->em->getRepository($info['entity'])->findAll());
+            }, $this->objectManager->getRepository($info['entity'])->findAll());
         }
 
         return $entities;

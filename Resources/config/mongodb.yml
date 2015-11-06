@@ -1,0 +1,6 @@
+services:
+    skuola_sitemap.command.sitemap_generator_command:
+        class: %skuola_sitemap.command.sitemap_generator_command.class%
+        arguments: ['@router', '@doctrine.odm.mongodb.document_manager', '%skuola_sitemap%']
+        tags:
+            -  { name: console.command }

@@ -2,7 +2,7 @@
 
 namespace Skuola\SitemapBundle\Tests\Unit\Service;
 
-use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\Common\Persistence\ObjectManager;
 use Mockery as m;
 use samdark\sitemap\Sitemap;
 use Skuola\SitemapBundle\Command\SitemapGeneratorCommand;
@@ -10,8 +10,15 @@ use Symfony\Component\Routing\RouterInterface;
 
 class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
 {
+    /**
+     * @var $router
+     */
     protected $router;
-    protected $em;
+
+    /**
+     * @var $objectManager
+     */
+    protected $objectManager;
 
     /**
      * @var SitemapGeneratorCommand
@@ -20,12 +27,12 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        $this->router =  m::mock(RouterInterface::class);
-        $this->em = m::mock(EntityManagerInterface::class);
+        $this->router = m::mock(RouterInterface::class);
+        $this->objectManager = m::mock(ObjectManager::class);
 
         $this->service = new SitemapGeneratorCommand(
             $this->router,
-            $this->em,
+            $this->objectManager,
             []
         );
     }
@@ -37,7 +44,7 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
 
     public function testGenerateSitemapFromRoutesWithEntityRoute()
     {
-        $service = m::mock(SitemapGeneratorCommand::class.'[getEntitiesAttributes,generateCombinations]', [$this->router, $this->em, []]);
+        $service = m::mock(SitemapGeneratorCommand::class.'[getEntitiesAttributes,generateCombinations]', [$this->router, $this->objectManager, []]);
 
         $sitemap = m::mock(Sitemap::class);
         $routes = [
