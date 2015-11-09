@@ -42,25 +42,36 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
         m::close();
     }
 
-    public function testGenerateSitemapFromRoutesWithEntityRoute()
+    public function testGenerateSitemapFromRoutesWithObjectRoute()
     {
-        $service = m::mock(SitemapGeneratorCommand::class.'[getEntitiesAttributes,generateCombinations]', [$this->router, $this->objectManager, []]);
+        $service = m::mock(SitemapGeneratorCommand::class.'[getValuesAttributes,generateCombinations]', [$this->router, $this->objectManager, []]);
 
         $sitemap = m::mock(Sitemap::class);
         $routes = [
             'route_name' => [
-                'route_params' => [
-                    'entity1' => ['entity' => 'EntityName1', 'prop' => 'property1'],
-                    'entity2' => ['entity' => 'EntityName2', 'prop' => 'property2']
+                'options' => [
+                    'param1' => [
+                        'defaults' => [0],
+                        'repository' => [
+                            'object'   => 'TestObject',
+                            'property' => 'id'
+                        ]
+                    ],
+                    'param2' => [
+                        'repository' => [
+                            'object'   => 'Test1Object',
+                            'property' => 'id'
+                        ]
+                    ],
                 ],
                 'changefreq' => Sitemap::WEEKLY,
                 'priority' => '0.8'
             ]
         ];
 
-        $service->shouldReceive('getEntitiesAttributes')
+        $service->shouldReceive('getValuesAttributes')
                 ->once()
-                ->andReturn([['1', '2'], ['a', 'b']]);
+                ->andReturn([['0','1', '2'], ['a', 'b']]);
 
         $service->shouldReceive('generateCombinations')
                 ->once()
@@ -79,7 +90,7 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
     public function testGenerateSitemapFromRoutesWithStaticRoute()
     {
         $sitemap = m::mock(Sitemap::class);
-        $routes = ['route_name' => ['route_params' => [], 'changefreq' => Sitemap::WEEKLY, 'priority' => '0.8']];
+        $routes = ['route_name' => ['options' => [], 'changefreq' => Sitemap::WEEKLY, 'priority' => '0.8']];
 
         $this->router->shouldReceive('generate')
             ->once()->with('route_name', [], true)

@@ -18,12 +18,12 @@ class SitemapGeneratorCommand extends Command
      * @var RouterInterface
      */
     protected $router;
-    
+
     /**
      * @var ObjectManager
      */
     protected $objectManager;
-    
+
     /**
      * @var array
      */
@@ -80,7 +80,7 @@ class SitemapGeneratorCommand extends Command
     public function generateSitemapFromRoutes(array $routes, Sitemap $sitemapWriter)
     {
         foreach ($routes as $name => $config) {
-            $routeParams = array_keys($config['route_params']);
+            $routeParams = array_keys($config['options']);
 
             $priority = $config['priority'];
             $changefreq = $config['changefreq'];
@@ -88,8 +88,8 @@ class SitemapGeneratorCommand extends Command
             if (empty($routeParams)) {
                 $sitemapWriter->addItem($this->router->generate($name, [], true), null, $changefreq, $priority);
             } else {
-                $entities = $this->getEntitiesAttributes($config['route_params']);
-                $combinations = $this->generateCombinations($entities);
+                $values = $this->getValuesAttributes($config['options']);
+                $combinations = $this->generateCombinations($values);
 
                 foreach ($combinations as $combination) {
                     if (!is_array($combination)) {
@@ -106,17 +106,38 @@ class SitemapGeneratorCommand extends Command
         return $sitemapWriter;
     }
 
-    public function getEntitiesAttributes($routeParams)
+    public function getValuesAttributes($routeParams)
     {
-        $entities = [];
+        $values = [];
 
-        foreach ($routeParams as $param => $info) {
-            $entities[] = array_map(function($entity) use ($info) {
-                return call_user_func([$entity, Container::camelize("get{$info['prop']}")]);
-            }, $this->objectManager->getRepository($info['object'])->findAll());
+        foreach ($routeParams as $params) {
+            if (empty($params['repository'])) {
+                $values[] = $params['defaults'];
+
+                continue;
+            }
+
+            $repositoryOptions = $params['repository'];
+
+            $values[] = array_unique(
+                array_merge(
+                    array_map(
+                        function($value) use ($repositoryOptions) {
+                            return call_user_func(
+                                [
+                                    $value,
+                                    Container::camelize("get{$repositoryOptions['property']}")
+                                ]
+                            );
+                        },
+                        $this->objectManager->getRepository($repositoryOptions['object'])->$repositoryOptions['method']()
+                    ),
+                    $params['defaults']
+                )
+            );
         }
 
-        return $entities;
+        return $values;
     }
 
     public function generateCombinations(array $arrays, $i = 0)

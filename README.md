@@ -31,16 +31,19 @@ skuola_sitemap:
     host: www.skuola.net
     db_driver: orm
     routes:
-        legacy_route: ~
-        my_route_city:
-            route_params:
-                city: { object: SkuolaDemoBundle:City, prop: slug }
+        tag_show:
+            options:
+                slug:
+                    repository:
+                        object: SkuolaTestBundle:Tag
+                        property: slug
+                type:
+                    repository:
+                        object: SkuolaTestBundle:Type
+                        property: id
+                        method: findEnabled
+                     #merge repository results with defaults options   
+                    defaults: [0]
             changefreq: weekly
             priority: 0.8
-        my_route_user_subject:
-            route_params:
-                user: { object: SkuolaDemoBundle:User, prop: username }
-                subject: { object: SkuolaDemoBundle:Subject, prop: slug }
-            changefreq: weekly
-            priority: 0.5
 ```
