@@ -49,7 +49,7 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
         $sitemap = m::mock(Sitemap::class);
         $routes = [
             'route_name' => [
-                'options' => [
+                'parameters' => [
                     'param1' => [
                         'defaults' => [0],
                         'repository' => [
@@ -90,7 +90,7 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
     public function testGenerateSitemapFromRoutesWithStaticRoute()
     {
         $sitemap = m::mock(Sitemap::class);
-        $routes = ['route_name' => ['options' => [], 'changefreq' => Sitemap::WEEKLY, 'priority' => '0.8']];
+        $routes = ['route_name' => ['parameters' => [], 'changefreq' => Sitemap::WEEKLY, 'priority' => '0.8']];
 
         $this->router->shouldReceive('generate')
             ->once()->with('route_name', [], true)

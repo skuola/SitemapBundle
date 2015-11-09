@@ -45,7 +45,7 @@ class Configuration implements ConfigurationInterface
                             ->scalarNode('priority')->defaultValue('0.5')->end()
                         ->end()
                         ->children()
-                            ->arrayNode('options')->defaultValue([])
+                            ->arrayNode('parameters')->defaultValue([])
                             ->normalizeKeys(false)
                             ->useAttributeAsKey('key')
                             ->prototype('array')

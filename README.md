@@ -35,7 +35,7 @@ skuola_sitemap:
     base_url: ~ # http://www.skuola.net
     routes:
         tag_show:
-            options:
+            parameters:
                 slug:
                     repository:
                         object: SkuolaTestBundle:Tag

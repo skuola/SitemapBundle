@@ -80,7 +80,7 @@ class SitemapGeneratorCommand extends Command
     public function generateSitemapFromRoutes(array $routes, Sitemap $sitemapWriter)
     {
         foreach ($routes as $name => $config) {
-            $routeParams = array_keys($config['options']);
+            $routeParams = array_keys($config['parameters']);
 
             $priority = $config['priority'];
             $changefreq = $config['changefreq'];
@@ -88,7 +88,7 @@ class SitemapGeneratorCommand extends Command
             if (empty($routeParams)) {
                 $sitemapWriter->addItem($this->router->generate($name, [], true), null, $changefreq, $priority);
             } else {
-                $values = $this->getValuesAttributes($config['options']);
+                $values = $this->getValuesAttributes($config['parameters']);
                 $combinations = $this->generateCombinations($values);
 
                 foreach ($combinations as $combination) {
