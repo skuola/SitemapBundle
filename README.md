@@ -29,11 +29,22 @@ public function registerBundles()
 skuola_sitemap:
     scheme: http
     host: www.skuola.net
-    db_driver: orm
+    db_driver: orm # orm|mongodb
     # If you want to specify a custom base url for sitemap_index    
     # base_url: http://www.skuola.net/univerista
     base_url: ~ # http://www.skuola.net
     routes:
+        category_show:
+            parameters:
+                slug:
+                    repository:
+                        object: SkuolaTestBundle:Category
+                        property: slug
+                        method: findPublic
+                type:
+                    defaults: ["free", "open-source", "premium"]
+            changefreq: weekly
+            priority: 0.5
         tag_show:
             parameters:
                 slug:
