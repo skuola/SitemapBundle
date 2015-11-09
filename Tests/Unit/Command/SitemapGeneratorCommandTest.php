@@ -6,6 +6,10 @@ use Doctrine\Common\Persistence\ObjectManager;
 use Mockery as m;
 use samdark\sitemap\Sitemap;
 use Skuola\SitemapBundle\Command\SitemapGeneratorCommand;
+use Symfony\Component\Console\Helper\FormatterHelper;
+use Symfony\Component\Console\Helper\HelperSet;
+use Symfony\Component\Console\Output\Output;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Routing\RouterInterface;
 
 class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
@@ -21,6 +25,11 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
     protected $objectManager;
 
     /**
+     * @var OutputInterface
+     */
+    protected $output;
+
+    /**
      * @var SitemapGeneratorCommand
      */
     protected $service;
@@ -29,12 +38,33 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
     {
         $this->router = m::mock(RouterInterface::class);
         $this->objectManager = m::mock(ObjectManager::class);
+        $this->output = $this->getOutputMock();
 
         $this->service = new SitemapGeneratorCommand(
             $this->router,
             $this->objectManager,
             []
         );
+
+        $this->service->setHelperSet(new HelperSet(
+            [new FormatterHelper()]
+        ));
+    }
+
+    protected function getOutputMock()
+    {
+        $output = m::mock(Output::class);
+
+        $output->shouldReceive('writeln')
+            ->andReturn("\n");
+
+        $output->shouldReceive('isDecorated')
+            ->andReturn(false);
+
+        $output->shouldReceive('getVerbosity')
+            ->andReturn(Output::VERBOSITY_QUIET);
+
+        return $output;
     }
 
     public function tearDown()
@@ -45,6 +75,10 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
     public function testGenerateSitemapFromRoutesWithObjectRoute()
     {
         $service = m::mock(SitemapGeneratorCommand::class.'[getValuesAttributes,generateCombinations]', [$this->router, $this->objectManager, []]);
+
+        $service->setHelperSet(new HelperSet(
+            [new FormatterHelper()]
+        ));
 
         $sitemap = m::mock(Sitemap::class);
         $routes = [
@@ -84,7 +118,7 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
         $sitemap->shouldReceive('addItem')
                 ->times(4)->with(m::anyOf('a', 'b', 'c', 'd'), null, Sitemap::WEEKLY, '0.8');
 
-        $this->assertInstanceOf(Sitemap::class, $service->generateSitemapFromRoutes($routes, $sitemap));
+        $this->assertInstanceOf(Sitemap::class, $service->generateSitemapFromRoutes($routes, $sitemap, $this->output));
     }
 
     public function testGenerateSitemapFromRoutesWithStaticRoute()
@@ -98,7 +132,7 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
 
         $sitemap->shouldReceive('addItem')->once()->with('http://valid.route', null, $routes['route_name']['changefreq'], $routes['route_name']['priority']);
 
-        $this->assertInstanceOf(Sitemap::class, $this->service->generateSitemapFromRoutes($routes, $sitemap));
+        $this->assertInstanceOf(Sitemap::class, $this->service->generateSitemapFromRoutes($routes, $sitemap, $this->output));
     }
 
     /**

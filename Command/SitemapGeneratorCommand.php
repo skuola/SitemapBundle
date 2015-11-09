@@ -2,6 +2,7 @@
 
 namespace Skuola\SitemapBundle\Command;
 
+use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Routing\RouterInterface;
 use samdark\sitemap\Index;
 use samdark\sitemap\Sitemap;
@@ -64,7 +65,7 @@ class SitemapGeneratorCommand extends Command
 
         $sitemapWriter = new Sitemap($this->config['path']);
 
-        $sitemapWriter = $this->generateSitemapFromRoutes($this->config['routes'], $sitemapWriter);
+        $sitemapWriter = $this->generateSitemapFromRoutes($this->config['routes'], $sitemapWriter, $output);
 
         $output->writeln($formatter->formatBlock(['[Info]', count($sitemapWriter->getSitemapUrls($this->getBaseUrl())) . ' sitemap will be generated'], 'info', true));
 
@@ -77,7 +78,13 @@ class SitemapGeneratorCommand extends Command
         $output->writeln($formatter->formatBlock(['[Info]', 'Mission Accomplished in '. (time() - $start) . ' s'], 'info', true));
     }
 
-    public function generateSitemapFromRoutes(array $routes, Sitemap $sitemapWriter)
+    /**
+     * @param array $routes
+     * @param Sitemap $sitemapWriter
+     * @param OutputInterface $output
+     * @return Sitemap
+     */
+    public function generateSitemapFromRoutes(array $routes, Sitemap $sitemapWriter, OutputInterface $output)
     {
         foreach ($routes as $name => $config) {
             $routeParams = array_keys($config['parameters']);
@@ -85,11 +92,18 @@ class SitemapGeneratorCommand extends Command
             $priority = $config['priority'];
             $changefreq = $config['changefreq'];
 
+            $output->writeln(
+                $this->getHelper('formatter')->formatBlock(['[Route]', $name], 'comment')
+            );
+
             if (empty($routeParams)) {
                 $sitemapWriter->addItem($this->router->generate($name, [], true), null, $changefreq, $priority);
             } else {
                 $values = $this->getValuesAttributes($config['parameters']);
                 $combinations = $this->generateCombinations($values);
+
+                $progress = new ProgressBar($output, count($combinations));
+                $progress->start();
 
                 foreach ($combinations as $combination) {
                     if (!is_array($combination)) {
@@ -97,9 +111,13 @@ class SitemapGeneratorCommand extends Command
                     }
 
                     $params = array_combine($routeParams, $combination);
-
                     $sitemapWriter->addItem($this->router->generate($name, $params, true), null, $changefreq, $priority);
+
+                    $progress->advance();
                 }
+                $progress->finish();
+
+                $output->writeln("\n");
             }
         }
 
