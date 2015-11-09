@@ -29,6 +29,7 @@ class Configuration implements ConfigurationInterface
                     ->isRequired()
                     ->cannotBeEmpty()
                 ->end()
+                ->scalarNode('base_url')->end()
                 ->scalarNode('index_path')
                     ->defaultValue('%kernel.root_dir%/../web/sitemap_index.xml')
                     ->end()

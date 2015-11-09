@@ -30,6 +30,9 @@ skuola_sitemap:
     scheme: http
     host: www.skuola.net
     db_driver: orm
+    # If you want to specify a custom base url for sitemap_index    
+    # base_url: http://www.skuola.net/univerista
+    base_url: ~ # http://www.skuola.net
     routes:
         tag_show:
             options:

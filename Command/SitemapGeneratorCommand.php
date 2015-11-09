@@ -189,6 +189,10 @@ class SitemapGeneratorCommand extends Command
 
     protected function getBaseUrl()
     {
+        if (!empty($this->config['base_url'])) {
+            return $this->config['base_url'];
+        }
+
         $context = $this->router->getContext();
 
         return sprintf('%s://%s%s', $context->getScheme(), $context->getHost(), $context->getPathInfo());
