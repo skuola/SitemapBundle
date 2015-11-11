@@ -116,9 +116,9 @@ class SitemapGeneratorCommand extends Command
                     $progress->advance();
                 }
                 $progress->finish();
-
-                $output->writeln("\n");
             }
+            
+            $output->writeln("\n");
         }
 
         return $sitemapWriter;
