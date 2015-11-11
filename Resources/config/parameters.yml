@@ -1,0 +1,2 @@
+parameters:
+    skuola_sitemap.command.sitemap_generator_command.class: Skuola\SitemapBundle\Command\SitemapGeneratorCommand

@@ -3,7 +3,6 @@
 [![Build Status](https://travis-ci.org/skuola/SitemapBundle.svg?branch=master)](https://travis-ci.org/skuola/SitemapBundle)
 
 ##Installation
-------------
 
 Install the bundle:
 
@@ -28,17 +27,37 @@ public function registerBundles()
 ``` yml
 # app/config/config.yml
 skuola_sitemap:
+    scheme: http
+    host: www.skuola.net
+    db_driver: orm # orm|mongodb
+    # If you want to specify a custom base url for sitemap_index    
+    # base_url: http://www.skuola.net/univerista
+    base_url: ~ # http://www.skuola.net
     routes:
-        legacy_route: ~
-        my_route_city:
-            route_params:
-                city: { entity: SkuolaDemoBundle:City, prop: slug }
-            changefreq: weekly
-            priority: 0.8
-        my_route_user_subject:
-            route_params:
-                user: { entity: SkuolaDemoBundle:User, prop: username }
-                subject: { entity: SkuolaDemoBundle:Subject, prop: slug }
+        category_show:
+            parameters:
+                slug:
+                    repository:
+                        object: SkuolaTestBundle:Category
+                        property: slug
+                        method: findPublic
+                type:
+                    defaults: ["free", "open-source", "premium"]
             changefreq: weekly
             priority: 0.5
+        tag_show:
+            parameters:
+                slug:
+                    repository:
+                        object: SkuolaTestBundle:Tag
+                        property: slug
+                type:
+                    repository:
+                        object: SkuolaTestBundle:Type
+                        property: id
+                        method: findEnabled
+                     #merge repository results with defaults options   
+                    defaults: [0]
+            changefreq: weekly
+            priority: 0.8
 ```

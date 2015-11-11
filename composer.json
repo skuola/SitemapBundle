@@ -8,12 +8,17 @@
     {
       "name": "Oreste Di Modugno",
       "email": "oreste.dimodugno@skuola.net"
+    },
+    {
+      "name": "Chiarillo Massimo",
+      "email": "chiarillo.massimo@skuola.net"
     }
   ],
   "require": {
     "symfony/framework-bundle": "~2.7",
     "samdark/sitemap": "~2.0",
-    "symfony/console": "~2.7"
+    "symfony/console": "~2.7",
+    "doctrine/common": "~2.5"
   },
   "require-dev": {
     "phpunit/phpunit": "^4.7",

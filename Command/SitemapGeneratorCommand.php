@@ -2,7 +2,7 @@
 
 namespace Skuola\SitemapBundle\Command;
 
-use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Routing\RouterInterface;
 use samdark\sitemap\Index;
 use samdark\sitemap\Sitemap;
@@ -11,16 +11,36 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\Container;
+use Doctrine\Common\Persistence\ObjectManager;
 
 class SitemapGeneratorCommand extends Command
 {
-    protected $router, $config;
+    /**
+     * @var RouterInterface
+     */
+    protected $router;
 
-    public function __construct(RouterInterface $router, EntityManagerInterface $em, array $config)
+    /**
+     * @var ObjectManager
+     */
+    protected $objectManager;
+
+    /**
+     * @var array
+     */
+    protected $config;
+
+    /**
+     * SitemapGeneratorCommand constructor.
+     * @param RouterInterface $router
+     * @param ObjectManager $objectManager
+     * @param array $config
+     */
+    public function __construct(RouterInterface $router, ObjectManager $objectManager, array $config)
     {
-        $this->em = $em;
-        $this->router = $router;
-        $this->config = $config;
+        $this->objectManager = $objectManager;
+        $this->router        = $router;
+        $this->config        = $config;
 
         parent::__construct();
     }
@@ -45,7 +65,7 @@ class SitemapGeneratorCommand extends Command
 
         $sitemapWriter = new Sitemap($this->config['path']);
 
-        $sitemapWriter = $this->generateSitemapFromRoutes($this->config['routes'], $sitemapWriter);
+        $sitemapWriter = $this->generateSitemapFromRoutes($this->config['routes'], $sitemapWriter, $output);
 
         $output->writeln($formatter->formatBlock(['[Info]', count($sitemapWriter->getSitemapUrls($this->getBaseUrl())) . ' sitemap will be generated'], 'info', true));
 
@@ -58,19 +78,32 @@ class SitemapGeneratorCommand extends Command
         $output->writeln($formatter->formatBlock(['[Info]', 'Mission Accomplished in '. (time() - $start) . ' s'], 'info', true));
     }
 
-    public function generateSitemapFromRoutes(array $routes, Sitemap $sitemapWriter)
+    /**
+     * @param array $routes
+     * @param Sitemap $sitemapWriter
+     * @param OutputInterface $output
+     * @return Sitemap
+     */
+    public function generateSitemapFromRoutes(array $routes, Sitemap $sitemapWriter, OutputInterface $output)
     {
         foreach ($routes as $name => $config) {
-            $routeParams = array_keys($config['route_params']);
+            $routeParams = array_keys($config['parameters']);
 
             $priority = $config['priority'];
             $changefreq = $config['changefreq'];
 
+            $output->writeln(
+                $this->getHelper('formatter')->formatBlock(['[Route]', $name], 'comment')
+            );
+
             if (empty($routeParams)) {
                 $sitemapWriter->addItem($this->router->generate($name, [], true), null, $changefreq, $priority);
             } else {
-                $entities = $this->getEntitiesAttributes($config['route_params']);
-                $combinations = $this->generateCombinations($entities);
+                $values = $this->getValuesAttributes($config['parameters']);
+                $combinations = $this->generateCombinations($values);
+
+                $progress = new ProgressBar($output, count($combinations));
+                $progress->start();
 
                 foreach ($combinations as $combination) {
                     if (!is_array($combination)) {
@@ -78,26 +111,51 @@ class SitemapGeneratorCommand extends Command
                     }
 
                     $params = array_combine($routeParams, $combination);
-
                     $sitemapWriter->addItem($this->router->generate($name, $params, true), null, $changefreq, $priority);
+
+                    $progress->advance();
                 }
+                $progress->finish();
             }
+            
+            $output->writeln("\n");
         }
 
         return $sitemapWriter;
     }
 
-    public function getEntitiesAttributes($routeParams)
+    public function getValuesAttributes($routeParams)
     {
-        $entities = [];
+        $values = [];
 
-        foreach ($routeParams as $param => $info) {
-            $entities[] = array_map(function($entity) use ($info) {
-                return call_user_func([$entity, Container::camelize("get{$info['prop']}")]);
-            }, $this->em->getRepository($info['entity'])->findAll());
+        foreach ($routeParams as $params) {
+            if (empty($params['repository'])) {
+                $values[] = $params['defaults'];
+
+                continue;
+            }
+
+            $repositoryOptions = $params['repository'];
+
+            $values[] = array_unique(
+                array_merge(
+                    array_map(
+                        function($value) use ($repositoryOptions) {
+                            return call_user_func(
+                                [
+                                    $value,
+                                    Container::camelize("get{$repositoryOptions['property']}")
+                                ]
+                            );
+                        },
+                        $this->objectManager->getRepository($repositoryOptions['object'])->$repositoryOptions['method']()
+                    ),
+                    $params['defaults']
+                )
+            );
         }
 
-        return $entities;
+        return $values;
     }
 
     public function generateCombinations(array $arrays, $i = 0)
@@ -149,6 +207,10 @@ class SitemapGeneratorCommand extends Command
 
     protected function getBaseUrl()
     {
+        if (!empty($this->config['base_url'])) {
+            return $this->config['base_url'];
+        }
+
         $context = $this->router->getContext();
 
         return sprintf('%s://%s%s', $context->getScheme(), $context->getHost(), $context->getPathInfo());
