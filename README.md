@@ -45,6 +45,17 @@ skuola_sitemap:
                     defaults: ["free", "open-source", "premium"]
             changefreq: weekly
             priority: 0.5
+        open_source_post:
+            parameters:
+                slug:
+                    repository:
+                        object: SkuolaTestBundle:Category
+                        property: slug
+                        method: findBySlug
+                        #Call findWithSlug($slug) method with custom arguments
+                        arguments: ["open-source"]
+            changefreq: weekly
+            priority: 0.3
         tag_show:
             parameters:
                 slug:
