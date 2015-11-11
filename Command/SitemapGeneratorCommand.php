@@ -148,7 +148,10 @@ class SitemapGeneratorCommand extends Command
                                 ]
                             );
                         },
-                        $this->objectManager->getRepository($repositoryOptions['object'])->$repositoryOptions['method']()
+                        call_user_func_array([
+                            $this->objectManager->getRepository($repositoryOptions['object']),
+                            $repositoryOptions['method']
+                        ], $repositoryOptions['arguments'])
                     ),
                     $params['defaults']
                 )
