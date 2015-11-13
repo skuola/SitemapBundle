@@ -2,18 +2,18 @@
 
 namespace Skuola\SitemapBundle\Command;
 
+use Skuola\SitemapBundle\Service\ParametersCollectionInterface;
+use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Routing\RouterInterface;
 use samdark\sitemap\Index;
 use samdark\sitemap\Sitemap;
-use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
-use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\Container;
 use Doctrine\Common\Persistence\ObjectManager;
 
-class SitemapGeneratorCommand extends Command
+class SitemapGeneratorCommand extends ContainerAwareCommand
 {
     /**
      * @var RouterInterface
@@ -29,6 +29,16 @@ class SitemapGeneratorCommand extends Command
      * @var array
      */
     protected $config;
+
+    /**
+     * @var Sitemap
+     */
+    protected $sitemap;
+
+    /**
+     * @var OutputInterface
+     */
+    protected $output;
 
     /**
      * SitemapGeneratorCommand constructor.
@@ -54,6 +64,8 @@ class SitemapGeneratorCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        $this->output = $output;
+
         $start = time();
 
         $this->validateRoutes($this->config['routes']);
@@ -63,79 +75,123 @@ class SitemapGeneratorCommand extends Command
         $this->router->getContext()->setScheme($this->config['scheme']);
         $this->router->getContext()->setHost($this->config['host']);
 
-        $sitemapWriter = new Sitemap($this->config['path']);
+        $this->sitemap = new Sitemap($this->config['path']);
 
-        $sitemapWriter = $this->generateSitemapFromRoutes($this->config['routes'], $sitemapWriter, $output);
+        $this->generateSitemapFromRoutes($this->config['routes']);
 
-        $output->writeln($formatter->formatBlock(['[Info]', count($sitemapWriter->getSitemapUrls($this->getBaseUrl())) . ' sitemap will be generated'], 'info', true));
+        $this->output->writeln($formatter->formatBlock(['[Info]', count($this->sitemap->getSitemapUrls($this->getBaseUrl())) . ' sitemap will be generated'], 'info', true));
 
-        $sitemapWriter->write();
+        $this->sitemap->write();
 
-        $output->writeln($formatter->formatBlock(['[Info]', 'Generating Sitemap index'], 'info', true));
+        $this->output->writeln($formatter->formatBlock(['[Info]', 'Generating Sitemap index'], 'info', true));
 
-        $this->generateSitemapsIndex($sitemapWriter);
+        $this->generateSitemapsIndex();
 
-        $output->writeln($formatter->formatBlock(['[Info]', 'Mission Accomplished in '. (time() - $start) . ' s'], 'info', true));
+        $this->output->writeln($formatter->formatBlock(['[Info]', 'Mission Accomplished in '. (time() - $start) . ' s'], 'info', true));
     }
 
     /**
      * @param array $routes
-     * @param Sitemap $sitemapWriter
-     * @param OutputInterface $output
      * @return Sitemap
      */
-    public function generateSitemapFromRoutes(array $routes, Sitemap $sitemapWriter, OutputInterface $output)
+    public function generateSitemapFromRoutes(array $routes)
     {
-        foreach ($routes as $name => $config) {
-            $routeParams = array_keys($config['parameters']);
+        foreach ($routes as $routeName => $routeConfigurations) {
+            $priority   = $routeConfigurations['priority'];
+            $changefreq = $routeConfigurations['changefreq'];
 
-            $priority = $config['priority'];
-            $changefreq = $config['changefreq'];
-
-            $output->writeln(
-                $this->getHelper('formatter')->formatBlock(['[Route]', $name], 'comment')
+            $this->output->writeln(
+                $this->getHelper('formatter')->formatBlock(['[Route]', $routeName], 'comment')
             );
 
-            if (empty($routeParams)) {
-                $sitemapWriter->addItem($this->router->generate($name, [], true), null, $changefreq, $priority);
-            } else {
-                $values = $this->getValuesAttributes($config['parameters']);
-                $combinations = $this->generateCombinations($values);
+            if (!empty($routeConfigurations['provider'])) {
+                $service = $this->getContainer()->get(
+                    $routeConfigurations['provider']
+                );
 
-                $progress = new ProgressBar($output, count($combinations));
-                $progress->start();
-
-                foreach ($combinations as $combination) {
-                    if (!is_array($combination)) {
-                        $combination = [$combination];
-                    }
-
-                    $params = array_combine($routeParams, $combination);
-                    $sitemapWriter->addItem($this->router->generate($name, $params, true), null, $changefreq, $priority);
-
-                    $progress->advance();
+                if (!$service instanceof ParametersCollectionInterface) {
+                    throw new \InvalidArgumentException(sprintf('Invalid %s class, please implement %s', $routeConfigurations['service'], ParametersCollectionInterface::class));
                 }
-                $progress->finish();
+
+                $this->addItems(
+                    $routeName,
+                    $service->getParametersCollection(),
+                    $changefreq,
+                    $priority
+                );
+
+                $this->output->writeln('');
+                continue;
             }
-            
-            $output->writeln("\n");
+
+            $routeOptions = $routeConfigurations['options'];
+            $routeKeys = array_keys($routeOptions);
+
+            if (empty($routeOptions)) {
+                $this->sitemap->addItem($this->router->generate($routeName, [], true), null, $changefreq, $priority);
+
+                $this->output->writeln('');
+                continue;
+            }
+
+            $this->addItems(
+                $routeName,
+                $this->getCombinationsWithRouteParameters($routeKeys, $routeOptions),
+                $changefreq,
+                $priority
+            );
+
+            $this->output->writeln('');
         }
 
-        return $sitemapWriter;
+        return $this->sitemap;
     }
 
-    public function getValuesAttributes($routeParams)
+    protected function addItems($route, array $parametersCollection, $changefreq, $priority)
+    {
+        $progress = new ProgressBar($this->output, count($parametersCollection));
+        $progress->start();
+
+        foreach($parametersCollection as $parameters) {
+            $this->sitemap->addItem($this->router->generate($route, $parameters, true), null, $changefreq, $priority);
+            $progress->advance();
+        }
+
+        $progress->finish();
+        $this->output->writeln('');
+    }
+
+    public function getCombinationsWithRouteParameters($keys, $options)
+    {
+        $combinations = $this->generateCombinations(
+            $this->getValuesAttributes($options)
+        );
+
+        $values = [];
+
+        foreach ($combinations as $combination) {
+            if (!is_array($combination)) {
+                $combination = [$combination];
+            }
+
+            $values[] = array_combine($keys, $combination);
+        }
+
+        return $values;
+    }
+
+    public function getValuesAttributes($routeOptions)
     {
         $values = [];
 
-        foreach ($routeParams as $params) {
-            if (empty($params['repository'])) {
-                $values[] = $params['defaults'];
+        foreach ($routeOptions as $option) {
+            if (empty($option['repository'])) {
+                $values[] = $option['defaults'];
 
                 continue;
             }
 
-            $repositoryOptions = $params['repository'];
+            $repositoryOptions = $option['repository'];
 
             $values[] = array_unique(
                 array_merge(
@@ -153,7 +209,7 @@ class SitemapGeneratorCommand extends Command
                             $repositoryOptions['method']
                         ], $repositoryOptions['arguments'])
                     ),
-                    $params['defaults']
+                    $option['defaults']
                 )
             );
         }
@@ -184,11 +240,11 @@ class SitemapGeneratorCommand extends Command
         return $result;
     }
 
-    protected function generateSitemapsIndex(Sitemap $sitemapWriter)
+    protected function generateSitemapsIndex()
     {
         $sitemapIndex = new Index($this->config['index_path']);
 
-        $sitemapFileUrls = $sitemapWriter->getSitemapUrls($this->getBaseUrl());
+        $sitemapFileUrls = $this->sitemap->getSitemapUrls($this->getBaseUrl());
 
         foreach ($sitemapFileUrls as $sitemapUrl) {
             $sitemapIndex->addSitemap($sitemapUrl);
@@ -201,7 +257,7 @@ class SitemapGeneratorCommand extends Command
     {
         foreach($definedRoutes as $name => $info) {
             if (!$this->router->getRouteCollection()->get($name)) {
-                throw new InvalidConfigurationException(sprintf('The route "%s" does not exist.', $name));
+                throw new \InvalidArgumentException(sprintf('The route "%s" does not exist.', $name));
             }
         }
 
