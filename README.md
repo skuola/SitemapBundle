@@ -22,7 +22,7 @@ public function registerBundles()
 }
 ```
 
-##Configuration
+##Basic Configuration
 
 ``` yml
 # app/config/config.yml
@@ -72,3 +72,68 @@ skuola_sitemap:
             changefreq: weekly
             priority: 0.8
 ```
+
+##Configuration with custom service:
+
+###Example
+Routing
+
+``` yml
+# app/config/test_routing.yml
+page_show: 
+    path: /{category_slug}/{page_slug}
+```
+
+Configuration
+``` yml
+# app/config/config.yml
+skuola_sitemap:
+    scheme: http
+    host: www.skuola.net
+    db_driver: orm
+    routes:
+        page_show:
+            provider: skuola_testbundle.sitemap.page_provider
+            changefreq: weekly
+            priority: 0.5
+```
+
+Create your generator service, implements `Skuola\SitemapBundle\Service\ParametersCollectionsInterface`
+
+``` yml
+# src/TestBundle/Resources/config/services.yml
+services:
+  skuola_testbundle.sitemap.page_provider:
+      class: Skuola\TestBundle\Service\Sitemap\PageProvider
+      arguments: [@doctrine.orm.entity_manager]
+```
+
+Create `PageProvider` class
+
+``` php
+use Skuola\SitemapBundle\Service\ParametersCollectionInterface;
+class PageProvider implements ParametersCollectionInterface {
+    protected $entityManager;
+    public function __construct($entityManager)
+    {
+        $this->entityManager = $entityManager;
+    }
+    //Implement getParametersCollection()
+    public function getParametersCollection() {
+        $collection = [];
+        $pages = $pageRepository = $this->entityManager->getRepository('Page')->findAll();
+        foreach($pages as $page) {
+            $collection[] = [
+               'category_slug' => $page->getCategory()->getSlug(),
+               'page_slug'     => $page->getSlug()
+            ]
+        }
+        return $collection;
+    }
+}
+```
+
+Run
+`app/console sitemap:generator`
+
+![Run](https://cloud.githubusercontent.com/assets/5167596/11148848/919da48c-8a1f-11e5-9593-def738378e77.png)

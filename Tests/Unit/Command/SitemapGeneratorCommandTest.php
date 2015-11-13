@@ -46,6 +46,12 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
             []
         );
 
+        $reflectionService = new \ReflectionClass($this->service);
+
+        $reflectionOutput = $reflectionService->getProperty('output');
+        $reflectionOutput->setAccessible(true);
+        $reflectionOutput->setValue($this->service, $this->output);
+
         $this->service->setHelperSet(new HelperSet(
             [new FormatterHelper()]
         ));
@@ -76,6 +82,12 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
     {
         $service = m::mock(SitemapGeneratorCommand::class.'[getValuesAttributes,generateCombinations]', [$this->router, $this->objectManager, []]);
 
+        $reflectionService = new \ReflectionClass($service);
+
+        $reflectionOutput = $reflectionService->getProperty('output');
+        $reflectionOutput->setAccessible(true);
+        $reflectionOutput->setValue($service, $this->output);
+
         $service->setHelperSet(new HelperSet(
             [new FormatterHelper()]
         ));
@@ -83,7 +95,7 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
         $sitemap = m::mock(Sitemap::class);
         $routes = [
             'route_name' => [
-                'parameters' => [
+                'options' => [
                     'param1' => [
                         'defaults' => [0],
                         'repository' => [
@@ -118,13 +130,20 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
         $sitemap->shouldReceive('addItem')
                 ->times(4)->with(m::anyOf('a', 'b', 'c', 'd'), null, Sitemap::WEEKLY, '0.8');
 
-        $this->assertInstanceOf(Sitemap::class, $service->generateSitemapFromRoutes($routes, $sitemap, $this->output));
+        $reflectionSitemap = $reflectionService->getProperty('sitemap');
+        $reflectionSitemap->setAccessible(true);
+        $reflectionSitemap->setValue($service, $sitemap);
+
+        $this->assertInstanceOf(
+            Sitemap::class,
+            $service->generateSitemapFromRoutes($routes)
+        );
     }
 
     public function testGenerateSitemapFromRoutesWithStaticRoute()
     {
         $sitemap = m::mock(Sitemap::class);
-        $routes = ['route_name' => ['parameters' => [], 'changefreq' => Sitemap::WEEKLY, 'priority' => '0.8']];
+        $routes = ['route_name' => ['options' => [], 'changefreq' => Sitemap::WEEKLY, 'priority' => '0.8']];
 
         $this->router->shouldReceive('generate')
             ->once()->with('route_name', [], true)
@@ -132,7 +151,15 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
 
         $sitemap->shouldReceive('addItem')->once()->with('http://valid.route', null, $routes['route_name']['changefreq'], $routes['route_name']['priority']);
 
-        $this->assertInstanceOf(Sitemap::class, $this->service->generateSitemapFromRoutes($routes, $sitemap, $this->output));
+        $reflectionService = new \ReflectionClass($this->service);
+        $reflectionSitemap = $reflectionService->getProperty('sitemap');
+        $reflectionSitemap->setAccessible(true);
+        $reflectionSitemap->setValue($this->service, $sitemap);
+
+        $this->assertInstanceOf(
+            Sitemap::class,
+            $this->service->generateSitemapFromRoutes($routes)
+        );
     }
 
     /**
