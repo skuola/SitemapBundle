@@ -98,7 +98,7 @@ skuola_sitemap:
             priority: 0.5
 ```
 
-Create your generator service, implements `Skuola\SitemapBundle\Service\ParametersCollectionsInterface`
+Create your generator service, implements `Skuola\SitemapBundle\Service\ParametersCollectionInterface`
 
 ``` yml
 # src/TestBundle/Resources/config/services.yml
