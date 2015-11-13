@@ -35,7 +35,7 @@ skuola_sitemap:
     base_url: ~ # http://www.skuola.net
     routes:
         category_show:
-            parameters:
+            options:
                 slug:
                     repository:
                         object: SkuolaTestBundle:Category
@@ -46,7 +46,7 @@ skuola_sitemap:
             changefreq: weekly
             priority: 0.5
         open_source_post:
-            parameters:
+            options:
                 slug:
                     repository:
                         object: SkuolaTestBundle:Category
@@ -57,7 +57,7 @@ skuola_sitemap:
             changefreq: weekly
             priority: 0.3
         tag_show:
-            parameters:
+            options:
                 slug:
                     repository:
                         object: SkuolaTestBundle:Tag
