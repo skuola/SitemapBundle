@@ -64,6 +64,8 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        gc_disable();
+        
         $this->output = $output;
 
         $start = time();
