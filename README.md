@@ -28,49 +28,77 @@ public function registerBundles()
 # app/config/config.yml
 skuola_sitemap:
     scheme: http
-    host: www.skuola.net
+    host: www.example.com
     db_driver: orm # orm|mongodb
-    # If you want to specify a custom base url for sitemap_index    
-    # base_url: http://www.skuola.net/univerista
-    base_url: ~ # http://www.skuola.net
-    routes:
-        category_show:
-            options:
-                slug:
-                    repository:
-                        object: SkuolaTestBundle:Category
-                        property: slug
-                        method: findPublic
-                type:
-                    defaults: ["free", "open-source", "premium"]
-            changefreq: weekly
-            priority: 0.5
-        open_source_post:
-            options:
-                slug:
-                    repository:
-                        object: SkuolaTestBundle:Category
-                        property: slug
-                        method: findBySlug
-                        #Call findWithSlug($slug) method with custom arguments
-                        arguments: ["open-source"]
-            changefreq: weekly
-            priority: 0.3
-        tag_show:
-            options:
-                slug:
-                    repository:
-                        object: SkuolaTestBundle:Tag
-                        property: slug
-                type:
-                    repository:
-                        object: SkuolaTestBundle:Type
-                        property: id
-                        method: findEnabled
-                     #merge repository results with defaults options   
-                    defaults: [0]
-            changefreq: weekly
-            priority: 0.8
+    sitemaps:
+        FirstSitemap:    
+            index:
+                # If you want to specify a custom base url for sitemap_index
+                base_url: ~ # Or your custom base url: http://%domain%/sitemaps/home
+                path: ~ # %kernel.root_dir%/../web/sitemap_index.xml
+            path: ~ # %kernel.root_dir%/../web/sitemap.xml
+            routes:
+                category_show:
+                    options:
+                        slug:
+                            repository:
+                                object: SkuolaTestBundle:Category
+                                property: slug
+                                method: findPublic
+                        type:
+                            defaults: ["free", "open-source", "premium"]
+                    changefreq: weekly
+                    priority: 0.5
+                open_source_post:
+                    options:
+                        slug:
+                            repository:
+                                object: SkuolaTestBundle:Category
+                                property: slug
+                                method: findBySlug
+                                #Call findWithSlug($slug) method with custom arguments
+                                arguments: ["open-source"]
+                    changefreq: weekly
+                    priority: 0.3
+                tag_show:
+                    options:
+                        slug:
+                            repository:
+                                object: SkuolaTestBundle:Tag
+                                property: slug
+                        type:
+                            repository:
+                                object: SkuolaTestBundle:Type
+                                property: id
+                                method: findEnabled
+                             #merge repository results with defaults options   
+                            defaults: [0]
+                    changefreq: weekly
+                    priority: 0.8
+```
+
+##Multi Sitemaps
+
+``` yml
+skuola_sitemap:
+    scheme: http
+    host: www.example.com
+    db_driver: orm
+    sitemaps:
+        Blog:
+            index:
+                base_url: http://www.example.com/sitemaps/home
+                path: %kernel.root_dir%/../web/shared/sitemaps/home/sitemap_index.xml
+            path: %kernel.root_dir%/../web/shared/sitemaps/home/sitemap.xml
+            routes:
+                ...
+        Store:
+            index:
+                base_url: http://www.example.com/sitemaps/store
+                path: %kernel.root_dir%/../web/shared/sitemaps/store/sitemap_index.xml
+            path: %kernel.root_dir%/../web/shared/sitemaps/store/sitemap.xml
+            routes:
+                ...
 ```
 
 ##Configuration with custom service:
@@ -89,13 +117,15 @@ Configuration
 # app/config/config.yml
 skuola_sitemap:
     scheme: http
-    host: www.skuola.net
+    host: www.example.com
     db_driver: orm
-    routes:
-        page_show:
-            provider: skuola_testbundle.sitemap.page_provider
-            changefreq: weekly
-            priority: 0.5
+    sitemaps:
+        FirstSitemap:
+            routes:
+                page_show:
+                    provider: skuola_testbundle.sitemap.page_provider
+                    changefreq: weekly
+                    priority: 0.5
 ```
 
 Create your generator service, implements `Skuola\SitemapBundle\Service\ParametersCollectionInterface`
@@ -121,7 +151,7 @@ class PageProvider implements ParametersCollectionInterface {
     //Implement getParametersCollection()
     public function getParametersCollection() {
         $collection = [];
-        $pages = $pageRepository = $this->entityManager->getRepository('Page')->findAll();
+        $pages = $this->entityManager->getRepository('Page')->findAll();
         foreach($pages as $page) {
             $collection[] = [
                'category_slug' => $page->getCategory()->getSlug(),
@@ -136,4 +166,4 @@ class PageProvider implements ParametersCollectionInterface {
 Run
 `app/console sitemap:generator`
 
-![Run](https://cloud.githubusercontent.com/assets/5167596/11148848/919da48c-8a1f-11e5-9593-def738378e77.png)
+![SitemapGeneratorCommand](https://cloud.githubusercontent.com/assets/5167596/11930198/ad15746c-a7e1-11e5-869d-6328c26bc7e4.png)

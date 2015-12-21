@@ -81,6 +81,7 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
     public function testGenerateSitemapFromRoutesWithObjectRoute()
     {
         $service = m::mock(SitemapGeneratorCommand::class.'[getValuesAttributes,generateCombinations]', [$this->router, $this->objectManager, []]);
+        $service->shouldAllowMockingProtectedMethods();
 
         $reflectionService = new \ReflectionClass($service);
 
@@ -130,13 +131,12 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
         $sitemap->shouldReceive('addItem')
                 ->times(4)->with(m::anyOf('a', 'b', 'c', 'd'), null, Sitemap::WEEKLY, '0.8');
 
-        $reflectionSitemap = $reflectionService->getProperty('sitemap');
-        $reflectionSitemap->setAccessible(true);
-        $reflectionSitemap->setValue($service, $sitemap);
+        $reflectionMethod = new \ReflectionMethod($service, 'generateSitemapFromRoutes');
+        $reflectionMethod->setAccessible(true);
 
         $this->assertInstanceOf(
             Sitemap::class,
-            $service->generateSitemapFromRoutes($routes)
+            $reflectionMethod->invoke($service,$sitemap, $routes)
         );
     }
 
@@ -151,14 +151,12 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
 
         $sitemap->shouldReceive('addItem')->once()->with('http://valid.route', null, $routes['route_name']['changefreq'], $routes['route_name']['priority']);
 
-        $reflectionService = new \ReflectionClass($this->service);
-        $reflectionSitemap = $reflectionService->getProperty('sitemap');
-        $reflectionSitemap->setAccessible(true);
-        $reflectionSitemap->setValue($this->service, $sitemap);
+        $reflectionMethod = new \ReflectionMethod($this->service, 'generateSitemapFromRoutes');
+        $reflectionMethod->setAccessible(true);
 
         $this->assertInstanceOf(
             Sitemap::class,
-            $this->service->generateSitemapFromRoutes($routes)
+            $reflectionMethod->invoke($this->service, $sitemap, $routes)
         );
     }
 
@@ -170,7 +168,10 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
      */
     public function testGenerateCombinations($firstArray, $secondArray, $expected)
     {
-        $this->assertEquals($expected, $this->service->generateCombinations([$firstArray, $secondArray]));
+        $reflectionMethod = new \ReflectionMethod($this->service, 'generateCombinations');
+        $reflectionMethod->setAccessible(true);
+
+        $this->assertEquals($expected, $reflectionMethod->invoke($this->service, [$firstArray, $secondArray]));
     }
 
     /**
