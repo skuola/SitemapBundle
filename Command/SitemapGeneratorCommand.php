@@ -12,6 +12,7 @@ use Skuola\SitemapBundle\Service\ParametersCollectionInterface;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Helper\Table;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Logger\ConsoleLogger;
 use Symfony\Component\Routing\RouterInterface;
 use samdark\sitemap\Index;
@@ -45,15 +46,16 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
 
     /**
      * SitemapGeneratorCommand constructor.
+     *
      * @param RouterInterface $router
-     * @param ObjectManager $objectManager
-     * @param array $config
+     * @param ObjectManager   $objectManager
+     * @param array           $config
      */
     public function __construct(RouterInterface $router, ObjectManager $objectManager, array $config)
     {
         $this->objectManager = $objectManager;
-        $this->router        = $router;
-        $this->config        = $config;
+        $this->router = $router;
+        $this->config = $config;
 
         parent::__construct();
     }
@@ -66,6 +68,7 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
         $this
             ->setName('sitemap:generator')
             ->setDescription('Generate sitemap based on sitemap_generator configuration')
+            ->addOption('name', 'sn', InputOption::VALUE_OPTIONAL, 'Sitemap Name')
         ;
     }
 
@@ -83,8 +86,12 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
 
         $start = time();
 
-        foreach($this->config['sitemaps'] as $name => $options) {
-            $this->generateSitemap($name, $options);
+        $name = $input->getOption('name');
+
+        if ($name && !$this->runSingleSitemap($name)) {
+            return 1;
+        } else {
+            $this->runMultiSitemaps();
         }
 
         $this->output->writeln(
@@ -93,7 +100,34 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
             )
         );
 
-        return ;
+        return;
+    }
+
+    /**
+     * @param $name
+     *
+     * @return bool|void
+     */
+    protected function runSingleSitemap($name)
+    {
+        if (!array_key_exists($name, $this->config['sitemaps'])) {
+            $this->output->writeln(
+                $this->getHelper('formatter')->formatBlock(
+                    ['[Error]', sprintf('Invalid sitemap name %s', $name)], ConsoleLogger::ERROR
+                )
+            );
+
+            return false;
+        }
+
+        $this->generateSitemap($name, $this->config['sitemaps'][$name]);
+    }
+
+    protected function runMultiSitemaps()
+    {
+        foreach ($this->config['sitemaps'] as $name => $options) {
+            $this->generateSitemap($name, $options);
+        }
     }
 
     /**
@@ -136,13 +170,14 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
 
     /**
      * @param Sitemap $sitemap
-     * @param array $routes
+     * @param array   $routes
+     *
      * @return Sitemap
      */
     protected function generateSitemapFromRoutes(Sitemap $sitemap, array $routes)
     {
         foreach ($routes as $routeName => $routeConfigurations) {
-            $priority   = $routeConfigurations['priority'];
+            $priority = $routeConfigurations['priority'];
             $changefreq = $routeConfigurations['changefreq'];
 
             $this->output->writeln(
@@ -200,20 +235,20 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
      */
     protected function printSitemapsPath($urls, $basePath)
     {
-        $paths =  array_map(
-            function($url) use ($basePath) {
+        $paths = array_map(
+            function ($url) use ($basePath) {
                 return sprintf('%s/%s', $basePath, basename($url));
             }, $urls
         );
 
         $table = new Table($this->output);
-        $table->setHeaders(['N°','Sitemap Path']);
+        $table->setHeaders(['N°', 'Sitemap Path']);
 
         $sitemapCounter = 0;
-        foreach($paths as $path) {
+        foreach ($paths as $path) {
             $table->addRow([
                     ++$sitemapCounter,
-                    $path
+                    $path,
                 ]
             );
         }
@@ -234,7 +269,7 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
         $progress = new ProgressBar($this->output, count($parametersCollection));
         $progress->start();
 
-        foreach($parametersCollection as $parameters) {
+        foreach ($parametersCollection as $parameters) {
             $sitemap->addItem($this->router->generate($route, $parameters, true), null, $changefreq, $priority);
             $progress->advance();
         }
@@ -246,6 +281,7 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
     /**
      * @param $keys
      * @param $options
+     *
      * @return array
      */
     protected function getCombinationsWithRouteParameters($keys, $options)
@@ -269,6 +305,7 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
 
     /**
      * @param $routeOptions
+     *
      * @return array
      */
     protected function getValuesAttributes($routeOptions)
@@ -287,17 +324,17 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
             $values[] = array_unique(
                 array_merge(
                     array_map(
-                        function($value) use ($repositoryOptions) {
+                        function ($value) use ($repositoryOptions) {
                             return call_user_func(
                                 [
                                     $value,
-                                    Container::camelize("get{$repositoryOptions['property']}")
+                                    Container::camelize("get{$repositoryOptions['property']}"),
                                 ]
                             );
                         },
                         call_user_func_array([
                             $this->objectManager->getRepository($repositoryOptions['object']),
-                            $repositoryOptions['method']
+                            $repositoryOptions['method'],
                         ], $repositoryOptions['arguments'])
                     ),
                     $option['defaults']
@@ -310,7 +347,8 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
 
     /**
      * @param array $arrays
-     * @param int $i
+     * @param int   $i
+     *
      * @return array
      */
     protected function generateCombinations(array $arrays, $i = 0)
@@ -338,7 +376,8 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
 
     /**
      * @param Sitemap $sitemap
-     * @param array $options
+     * @param array   $options
+     *
      * @return Index
      */
     protected function generateSitemapsIndex(Sitemap $sitemap, array $options)
@@ -358,11 +397,12 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
 
     /**
      * @param $definedRoutes
+     *
      * @return bool
      */
     protected function validateRoutes($definedRoutes)
     {
-        foreach($definedRoutes as $name => $info) {
+        foreach ($definedRoutes as $name => $info) {
             if (!$this->router->getRouteCollection()->get($name)) {
                 throw new \InvalidArgumentException(sprintf('The route "%s" does not exist.', $name));
             }
@@ -373,6 +413,7 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
 
     /**
      * @param array $options
+     *
      * @return string
      */
     protected function getBaseUrl(array $options)
@@ -382,7 +423,7 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
                 return $options['index']['base_url'];
             }
 
-            return sprintf("%s/",$options['index']['base_url']);
+            return sprintf('%s/', $options['index']['base_url']);
         }
 
         $context = $this->router->getContext();

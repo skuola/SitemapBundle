@@ -164,6 +164,11 @@ class PageProvider implements ParametersCollectionInterface {
 ```
 
 Run
+
 `app/console sitemap:generator`
+
+Run single Sitemap
+
+`app/console sitemap:generator --name "FirstSitemap"`
 
 ![SitemapGeneratorCommand](https://cloud.githubusercontent.com/assets/5167596/11930198/ad15746c-a7e1-11e5-869d-6328c26bc7e4.png)
