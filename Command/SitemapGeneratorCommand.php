@@ -21,6 +21,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\Container;
 use Doctrine\Common\Persistence\ObjectManager;
+use Symfony\Component\PropertyAccess\PropertyAccess;
 
 class SitemapGeneratorCommand extends ContainerAwareCommand
 {
@@ -33,6 +34,11 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
      * @var ObjectManager
      */
     protected $objectManager;
+
+    /**
+     * @var PropertyAccess
+     */
+    protected $accessor;
 
     /**
      * @var array
@@ -56,6 +62,7 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
         $this->objectManager = $objectManager;
         $this->router = $router;
         $this->config = $config;
+        $this->accessor = PropertyAccess::createPropertyAccessor();
 
         parent::__construct();
     }
@@ -100,7 +107,7 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
             )
         );
 
-        return;
+        return 0;
     }
 
     /**
@@ -177,39 +184,19 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
     protected function generateSitemapFromRoutes(Sitemap $sitemap, array $routes)
     {
         foreach ($routes as $routeName => $routeConfigurations) {
-            $priority = $routeConfigurations['priority'];
-            $changefreq = $routeConfigurations['changefreq'];
+            $routeParameters = $this->getRouteParamaters($routeConfigurations);
 
             $this->output->writeln(
                 $this->getHelper('formatter')->formatBlock(['[Route]', $routeName], 'comment')
             );
 
-            if (!empty($routeConfigurations['provider'])) {
-                $service = $this->getContainer()->get(
-                    $routeConfigurations['provider']
+            if (empty($routeParameters)) {
+                $sitemap->addItem(
+                    $this->router->generate($routeName, [], true),
+                    $routeConfigurations['lastmod'],
+                    $routeConfigurations['changefreq'],
+                    $routeConfigurations['priority']
                 );
-
-                if (!$service instanceof ParametersCollectionInterface) {
-                    throw new \InvalidArgumentException(sprintf('Invalid %s class, please implement %s', $routeConfigurations['service'], ParametersCollectionInterface::class));
-                }
-
-                $this->addItems(
-                    $sitemap,
-                    $routeName,
-                    $service->getParametersCollection(),
-                    $changefreq,
-                    $priority
-                );
-
-                $this->output->writeln('');
-                continue;
-            }
-
-            $routeOptions = $routeConfigurations['options'];
-            $routeKeys = array_keys($routeOptions);
-
-            if (empty($routeOptions)) {
-                $sitemap->addItem($this->router->generate($routeName, [], true), null, $changefreq, $priority);
 
                 $this->output->writeln('');
                 continue;
@@ -218,9 +205,8 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
             $this->addItems(
                 $sitemap,
                 $routeName,
-                $this->getCombinationsWithRouteParameters($routeKeys, $routeOptions),
-                $changefreq,
-                $priority
+                $routeParameters,
+                $routeConfigurations
             );
 
             $this->output->writeln('');
@@ -261,16 +247,21 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
      * @param Sitemap $sitemap
      * @param $route
      * @param array $parametersCollection
-     * @param $changefreq
-     * @param $priority
+     * @param array $routeConfigurations
      */
-    protected function addItems(Sitemap $sitemap, $route, array $parametersCollection, $changefreq, $priority)
+    protected function addItems(Sitemap $sitemap, $route, array $parametersCollection, array $routeConfigurations)
     {
         $progress = new ProgressBar($this->output, count($parametersCollection));
         $progress->start();
 
         foreach ($parametersCollection as $parameters) {
-            $sitemap->addItem($this->router->generate($route, $parameters, true), null, $changefreq, $priority);
+            $sitemap->addItem(
+                $this->router->generate($route, $this->accessor->getValue($parameters, '[route_params]') ?: $parameters, true),
+                $this->accessor->getValue($parameters, '[sitemap_optional_tags][lastmod]')    ?: $routeConfigurations['lastmod'],
+                $this->accessor->getValue($parameters, '[sitemap_optional_tags][changefreq]') ?: $routeConfigurations['changefreq'],
+                $this->accessor->getValue($parameters, '[sitemap_optional_tags][priority]')   ?: $routeConfigurations['priority']
+            );
+
             $progress->advance();
         }
 
@@ -279,12 +270,12 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
     }
 
     /**
-     * @param $keys
-     * @param $options
+     * @param array $keys
+     * @param array $options
      *
      * @return array
      */
-    protected function getCombinationsWithRouteParameters($keys, $options)
+    protected function getCombinationsWithRouteParameters(array $keys, array $options)
     {
         $combinations = $this->generateCombinations(
             $this->getValuesAttributes($options)
@@ -396,11 +387,11 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
     }
 
     /**
-     * @param $definedRoutes
+     * @param array $definedRoutes
      *
      * @return bool
      */
-    protected function validateRoutes($definedRoutes)
+    protected function validateRoutes(array $definedRoutes)
     {
         foreach ($definedRoutes as $name => $info) {
             if (!$this->router->getRouteCollection()->get($name)) {
@@ -429,5 +420,36 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
         $context = $this->router->getContext();
 
         return sprintf('%s://%s%s', $context->getScheme(), $context->getHost(), $context->getPathInfo());
+    }
+
+    /**
+     * @param array $routeConfigurations
+     *
+     * @return array
+     */
+    protected function getRouteParamaters(array $routeConfigurations)
+    {
+        if (!empty($routeConfigurations['provider'])) {
+            $service = $this->getContainer()->get(
+                $routeConfigurations['provider']
+            );
+
+            if (!$service instanceof ParametersCollectionInterface) {
+                throw new \InvalidArgumentException(
+                    sprintf(
+                        'Invalid %s class, please implement %s',
+                        $routeConfigurations['service'],
+                        ParametersCollectionInterface::class
+                    )
+                );
+            }
+
+            return $service->getParametersCollection();
+        }
+
+        return $this->getCombinationsWithRouteParameters(
+            array_keys($routeConfigurations['options']),
+            $routeConfigurations['options']
+        );
     }
 }

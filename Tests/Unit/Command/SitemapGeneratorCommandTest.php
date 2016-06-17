@@ -111,6 +111,7 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
                         ]
                     ],
                 ],
+                'lastmod'  => (new \DateTime('now'))->getTimestamp(),
                 'changefreq' => Sitemap::WEEKLY,
                 'priority' => '0.8'
             ]
@@ -129,27 +130,27 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
             ->andReturn('a', 'b', 'c', 'd');
 
         $sitemap->shouldReceive('addItem')
-                ->times(4)->with(m::anyOf('a', 'b', 'c', 'd'), null, Sitemap::WEEKLY, '0.8');
+                ->times(4)->with(m::anyOf('a', 'b', 'c', 'd'), (new \DateTime('now'))->getTimestamp(), Sitemap::WEEKLY, '0.8');
 
         $reflectionMethod = new \ReflectionMethod($service, 'generateSitemapFromRoutes');
         $reflectionMethod->setAccessible(true);
 
         $this->assertInstanceOf(
             Sitemap::class,
-            $reflectionMethod->invoke($service,$sitemap, $routes)
+            $reflectionMethod->invoke($service, $sitemap, $routes)
         );
     }
 
     public function testGenerateSitemapFromRoutesWithStaticRoute()
     {
         $sitemap = m::mock(Sitemap::class);
-        $routes = ['route_name' => ['options' => [], 'changefreq' => Sitemap::WEEKLY, 'priority' => '0.8']];
+        $routes = ['route_name' => ['options' => [], 'lastmod' => (new \DateTime('now'))->getTimestamp(), 'changefreq' => Sitemap::WEEKLY, 'priority' => '0.8']];
 
         $this->router->shouldReceive('generate')
             ->once()->with('route_name', [], true)
             ->andReturn('http://valid.route');
 
-        $sitemap->shouldReceive('addItem')->once()->with('http://valid.route', null, $routes['route_name']['changefreq'], $routes['route_name']['priority']);
+        $sitemap->shouldReceive('addItem')->once()->with('http://valid.route', (new \DateTime('now'))->getTimestamp(), $routes['route_name']['changefreq'], $routes['route_name']['priority']);
 
         $reflectionMethod = new \ReflectionMethod($this->service, 'generateSitemapFromRoutes');
         $reflectionMethod->setAccessible(true);
