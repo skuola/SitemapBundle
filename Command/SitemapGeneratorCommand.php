@@ -152,6 +152,8 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
             $options['routes']
         );
 
+        $sitemap->setMaxUrls($this->config['max_urls']);
+
         $this->output->writeln(
             $this->getHelper('formatter')->formatBlock(['[Info]', sprintf("Writing %s Sitemap... \n", $name)], ConsoleLogger::INFO)
         );
