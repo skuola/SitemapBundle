@@ -132,6 +132,8 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
         $sitemap->shouldReceive('addItem')
                 ->times(4)->with(m::anyOf('a', 'b', 'c', 'd'), (new \DateTime('now'))->getTimestamp(), Sitemap::WEEKLY, '0.8');
 
+        $sitemap->shouldReceive('setMaxUrls')->andReturn();
+
         $reflectionMethod = new \ReflectionMethod($service, 'generateSitemapFromRoutes');
         $reflectionMethod->setAccessible(true);
 
@@ -151,6 +153,7 @@ class SitemapGeneratorCommandTest extends \PHPUnit_Framework_TestCase
             ->andReturn('http://valid.route');
 
         $sitemap->shouldReceive('addItem')->once()->with('http://valid.route', (new \DateTime('now'))->getTimestamp(), $routes['route_name']['changefreq'], $routes['route_name']['priority']);
+        $sitemap->shouldReceive('setMaxUrls')->andReturn();
 
         $reflectionMethod = new \ReflectionMethod($this->service, 'generateSitemapFromRoutes');
         $reflectionMethod->setAccessible(true);

@@ -26,6 +26,11 @@ use Symfony\Component\PropertyAccess\PropertyAccess;
 class SitemapGeneratorCommand extends ContainerAwareCommand
 {
     /**
+     * Maximum allowed number of URLs in a single file.
+     */
+    const MAX_URLS = 50000;
+
+    /**
      * @var RouterInterface
      */
     protected $router;
@@ -149,10 +154,9 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
 
         $sitemap = $this->generateSitemapFromRoutes(
             new Sitemap($options['path']),
-            $options['routes']
+            $options['routes'],
+            $this->config['max_urls']
         );
-
-        $sitemap->setMaxUrls($this->config['max_urls']);
 
         $this->output->writeln(
             $this->getHelper('formatter')->formatBlock(['[Info]', sprintf("Writing %s Sitemap... \n", $name)], ConsoleLogger::INFO)
@@ -179,12 +183,15 @@ class SitemapGeneratorCommand extends ContainerAwareCommand
 
     /**
      * @param Sitemap $sitemap
-     * @param array   $routes
+     * @param array $routes
+     * @param int $maxUrls
      *
      * @return Sitemap
      */
-    protected function generateSitemapFromRoutes(Sitemap $sitemap, array $routes)
+    protected function generateSitemapFromRoutes(Sitemap $sitemap, array $routes, $maxUrls = self::MAX_URLS)
     {
+        $sitemap->setMaxUrls($maxUrls);
+
         foreach ($routes as $routeName => $routeConfigurations) {
             $routeParameters = $this->getRouteParamaters($routeConfigurations);
 
